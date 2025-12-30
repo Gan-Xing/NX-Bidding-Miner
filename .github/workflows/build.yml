@@ -22,7 +22,7 @@ jobs:
           - os: macos-latest # 默认是 Apple Silicon (M1/M2/M3)
             artifact_name: nx_bidding_analyzer
             asset_name: nx_bidding_miner_macos_apple_silicon
-          - os: macos-13    # Intel 芯片的最后一个 macOS Runner 版本
+          - os: macos-15-intel # 修正后的 Intel 芯片专用镜像
             artifact_name: nx_bidding_analyzer
             asset_name: nx_bidding_miner_macos_intel
 
@@ -59,7 +59,12 @@ jobs:
     - name: Rename and Prepare Assets
       shell: bash
       run: |
-        mv dist/${{ matrix.artifact_name }} dist/${{ matrix.asset_name }}
+        # 兼容 Windows 和 Unix 的移动逻辑
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          mv dist/nx_bidding_analyzer.exe dist/${{ matrix.asset_name }}
+        else
+          mv dist/nx_bidding_analyzer dist/${{ matrix.asset_name }}
+        fi
 
     - name: Release and Upload Assets
       uses: softprops/action-gh-release@v2
@@ -73,7 +78,7 @@ jobs:
           各版本下载说明：
           - **nx_bidding_miner_windows.exe**: 适用于 Windows。
           - **nx_bidding_miner_macos_apple_silicon**: 适用于搭载 M1/M2/M3 芯片的苹果电脑。
-          - **nx_bidding_miner_macos_intel**: 适用于搭载 Intel 芯片的老款苹果电脑。
+          - **nx_bidding_miner_macos_intel**: 适用于搭载 Intel 芯片的老款苹果电脑 (使用 macOS 15 构建)。
           
           *初次运行请务必点击“自动安装环境”按钮。*
         draft: false
