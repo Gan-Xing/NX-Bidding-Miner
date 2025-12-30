@@ -19,12 +19,15 @@ jobs:
           - os: windows-latest
             artifact_name: nx_bidding_analyzer.exe
             asset_name: nx_bidding_miner_windows.exe
-          - os: macos-latest # 默认是 Apple Silicon (M1/M2/M3)
+            use_zip: false
+          - os: macos-latest
             artifact_name: nx_bidding_analyzer
             asset_name: nx_bidding_miner_macos_apple_silicon
-          - os: macos-15-intel # 修正后的 Intel 芯片专用镜像
+            use_zip: true
+          - os: macos-15-intel
             artifact_name: nx_bidding_analyzer
             asset_name: nx_bidding_miner_macos_intel
+            use_zip: true
 
     steps:
     - uses: actions/checkout@v4
@@ -45,41 +48,46 @@ jobs:
       run: |
         python -m playwright install chromium
 
-    - name: Build with PyInstaller (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Build with PyInstaller
       run: |
         pyinstaller --noconsole --onefile --clean --collect-all playwright nx_bidding_analyzer.py
 
-    - name: Build with PyInstaller (macOS)
+    - name: Prepare and Zip Assets (macOS)
       if: startsWith(matrix.os, 'macos')
-      run: |
-        pyinstaller --noconsole --onefile --clean --collect-all playwright nx_bidding_analyzer.py
-        chmod +x dist/nx_bidding_analyzer
-
-    - name: Rename and Prepare Assets
       shell: bash
       run: |
-        # 兼容 Windows 和 Unix 的移动逻辑
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          mv dist/nx_bidding_analyzer.exe dist/${{ matrix.asset_name }}
-        else
-          mv dist/nx_bidding_analyzer dist/${{ matrix.asset_name }}
-        fi
+        chmod +x dist/nx_bidding_analyzer
+        mv dist/nx_bidding_analyzer dist/${{ matrix.asset_name }}
+        cd dist && zip ${{ matrix.asset_name }}.zip ${{ matrix.asset_name }}
+
+    - name: Prepare Assets (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        mv dist/nx_bidding_analyzer.exe dist/${{ matrix.asset_name }}
 
     - name: Release and Upload Assets
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: dist/${{ matrix.asset_name }}
+        files: |
+          dist/*.exe
+          dist/*.zip
         name: Release ${{ github.ref_name }}
         body: |
           宁夏公共资源交易分析工具 (NX-Bidding-Miner)
           
-          各版本下载说明：
-          - **nx_bidding_miner_windows.exe**: 适用于 Windows。
-          - **nx_bidding_miner_macos_apple_silicon**: 适用于搭载 M1/M2/M3 芯片的苹果电脑。
-          - **nx_bidding_miner_macos_intel**: 适用于搭载 Intel 芯片的老款苹果电脑 (使用 macOS 15 构建)。
+          **下载与运行说明：**
           
-          *初次运行请务必点击“自动安装环境”按钮。*
+          1. **Windows 用户**：
+             - 下载 `nx_bidding_miner_windows.exe`。
+             - 被杀毒软件拦截请选“仍要运行”。
+          
+          2. **Mac 用户 (重要)**：
+             - 下载对应的 `.zip` 压缩包。
+             - 解压后，如果双击提示无法打开，请在终端执行：
+               `xattr -cr ./文件名`
+          
+          *初次打开后，请务必点击界面上的“自动安装环境”按钮。*
         draft: false
         prerelease: false
