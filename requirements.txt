@@ -1,0 +1,7 @@
+playwright==1.49.1
+pandas
+openpyxl
+python-dotenv
+openai
+tk
+pyinstaller
